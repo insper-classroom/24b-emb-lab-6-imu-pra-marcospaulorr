@@ -24,7 +24,7 @@ const int I2C_SCL_GPIO = 5;
 #define UART_RX_PIN 1
 
 #define DEAD_ZONE 5.0f // Degrees
-#define SCALE_FACTOR 255.0f / 45.0f // Map +/-45 degrees to +/-255
+#define SCALE_FACTOR 128.0f / 45.0f // Map +/-45 degrees to +/-128
 
 QueueHandle_t xQueueData;
 
@@ -118,15 +118,19 @@ void mpu6050_task(void *p) {
         if (fabsf(roll) < DEAD_ZONE) roll = 0.0f;
         if (fabsf(pitch) < DEAD_ZONE) pitch = 0.0f;
 
-        // Map angles to -255 to +255
+        // Map angles to -128 to +128
         int16_t x_movement = (int16_t)(roll * SCALE_FACTOR);
         int16_t y_movement = (int16_t)(pitch * SCALE_FACTOR);
 
-        // Clamp values to -255 to +255
-        if (x_movement > 255) x_movement = 255;
-        if (x_movement < -255) x_movement = -255;
-        if (y_movement > 255) y_movement = 255;
-        if (y_movement < -255) y_movement = -255;
+        // Clamp values to -128 to +128
+        if (x_movement > 128) x_movement = 128;
+        if (x_movement < -128) x_movement = -128;
+        if (y_movement > 128) y_movement = 128;
+        if (y_movement < -128) y_movement = -128;
+
+        // Optionally, apply an additional scaling factor
+        x_movement /= 2;
+        y_movement /= 2;
 
         // Send movement data via UART
         imu_data_t data;
