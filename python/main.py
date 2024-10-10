@@ -21,17 +21,14 @@ def parse_data(data):
     return axis, value
 
 
-def move_mouse(data):
-    if data['type'] == 'movement':
-        x = data['x'] // 2  # Aplica fator de escala adicional
-        y = data['y'] // 2
-        device.emit(uinput.REL_X, x)
-        device.emit(uinput.REL_Y, y)
-    elif data['type'] == 'click':
-        # Simula um clique do mouse
-        device.emit(uinput.BTN_LEFT, 1)  # Pressiona o botão
-        time.sleep(0.05)
-        device.emit(uinput.BTN_LEFT, 0)  # Solta o botão
+def move_mouse(axis, value):
+    if axis == 0:    # X-axis
+        device.emit(uinput.REL_X, value)
+    elif axis == 1:  # Y-axis
+        device.emit(uinput.REL_Y, value)
+    elif axis==2:
+        device.emit(uinput.BTN_LEFT, 1)
+        time.sleep(0.1)
 
 
 try:

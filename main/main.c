@@ -23,8 +23,8 @@ const int I2C_SCL_GPIO = 5;
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
 
-#define DEAD_ZONE 10.0f // Zona morta aumentada para 10 graus
-#define SCALE_FACTOR 255.0f / 360.0f // Mapear +/-360 graus para +/-255
+#define DEAD_ZONE 20.0f // Zona morta aumentada para 20 graus
+#define SCALE_FACTOR 255.0f / 1000.0f // Mapear +/-1000 graus para +/-255
 
 QueueHandle_t xQueueData;
 
@@ -88,9 +88,9 @@ void mpu6050_task(void *p) {
     const TickType_t CLICK_DELAY = pdMS_TO_TICKS(500); // Atraso mínimo entre cliques
 
     // Variáveis estáticas para filtro passa-baixa
-    static int16_t prev_x_movement = 0;
-    static int16_t prev_y_movement = 0;
-    const float SMOOTHING_FACTOR = 0.1f; // Fator de suavização (entre 0 e 1)
+    static float prev_x_movement = 0.0f;
+    static float prev_y_movement = 0.0f;
+    const float SMOOTHING_FACTOR = 0.7f; // Fator de suavização aumentado
 
     while(1) {
         // Lê dados brutos do MPU6050
@@ -124,32 +124,49 @@ void mpu6050_task(void *p) {
         if (fabsf(pitch) < DEAD_ZONE) pitch = 0.0f;
 
         // Mapeia ângulos para -255 a +255
-        int16_t x_movement = (int16_t)(roll * SCALE_FACTOR);
-        int16_t y_movement = (int16_t)(pitch * SCALE_FACTOR);
+        float x_movement = roll * SCALE_FACTOR;
+        float y_movement = pitch * SCALE_FACTOR;
 
         // Limita valores a -255 e +255
-        if (x_movement > 255) x_movement = 255;
-        if (x_movement < -255) x_movement = -255;
-        if (y_movement > 255) y_movement = 255;
-        if (y_movement < -255) y_movement = -255;
+        if (x_movement > 255.0f) x_movement = 255.0f;
+        if (x_movement < -255.0f) x_movement = -255.0f;
+        if (y_movement > 255.0f) y_movement = 255.0f;
+        if (y_movement < -255.0f) y_movement = -255.0f;
 
         // Aplica fator de escala adicional
-        x_movement /= 8;
-        y_movement /= 8;
+        x_movement /= 32.0f;
+        y_movement /= 32.0f;
 
         // Aplica filtro passa-baixa
-        x_movement = prev_x_movement + (int16_t)((x_movement - prev_x_movement) * SMOOTHING_FACTOR);
-        y_movement = prev_y_movement + (int16_t)((y_movement - prev_y_movement) * SMOOTHING_FACTOR);
+        x_movement = prev_x_movement + (x_movement - prev_x_movement) * SMOOTHING_FACTOR;
+        y_movement = prev_y_movement + (y_movement - prev_y_movement) * SMOOTHING_FACTOR;
 
         // Atualiza os valores anteriores
         prev_x_movement = x_movement;
         prev_y_movement = y_movement;
 
+        // Limita o movimento máximo por ciclo
+        const float MAX_DELTA = 1.0f; // Movimento máximo permitido por ciclo
+        float delta_x = x_movement - prev_x_movement;
+        float delta_y = y_movement - prev_y_movement;
+
+        if (delta_x > MAX_DELTA) delta_x = MAX_DELTA;
+        if (delta_x < -MAX_DELTA) delta_x = -MAX_DELTA;
+        if (delta_y > MAX_DELTA) delta_y = MAX_DELTA;
+        if (delta_y < -MAX_DELTA) delta_y = -MAX_DELTA;
+
+        x_movement = prev_x_movement + delta_x;
+        y_movement = prev_y_movement + delta_y;
+
+        // Converte para int16_t
+        int16_t x_movement_int = (int16_t)x_movement;
+        int16_t y_movement_int = (int16_t)y_movement;
+
         // Envia dados de movimento via UART
         imu_data_t data;
         data.type = 0; // Dados de movimento
-        data.x = x_movement;
-        data.y = y_movement;
+        data.x = x_movement_int;
+        data.y = y_movement_int;
         xQueueSend(xQueueData, &data, portMAX_DELAY);
 
         // Detecta movimento repentino para clique do mouse
