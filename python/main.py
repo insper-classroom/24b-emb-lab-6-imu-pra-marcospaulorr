@@ -15,7 +15,7 @@ device = uinput.Device([
 
 def parse_data(data):
     axis = data[0]  # 0 for X, 1 for Y
-    value = int.from_bytes(data[1:3], byteorder='little', signed=True)
+    value = int.from_bytes(data[1:3], byteorder='big', signed=True)
     print(f"Received data: {data}")
     print(f"axis: {axis}, value: {value}")
     return axis, value
@@ -26,9 +26,13 @@ def move_mouse(axis, value):
         device.emit(uinput.REL_X, value)
     elif axis == 1:  # Y-axis
         device.emit(uinput.REL_Y, value)
-    elif axis==2:
-        device.emit(uinput.BTN_LEFT, 1)
+    elif axis == 2:
+        device.emit(uinput.BTN_LEFT,1)
         time.sleep(0.1)
+        device.emit(uinput.BTN_LEFT,0)
+
+
+        
 
 
 try:
